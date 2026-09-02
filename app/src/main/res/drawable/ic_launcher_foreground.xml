@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- A sprout/check mark kept within the adaptive-icon safe zone. -->
+    <path
+        android:fillColor="#237A4B"
+        android:pathData="M53,76 L53,50 C53,38 62,28 76,25 C77,39 70,49 58,54 L58,76 Z" />
+    <path
+        android:fillColor="#185C3A"
+        android:pathData="M52,76 L52,57 C42,54 34,47 32,36 C44,36 54,43 57,53 L57,76 Z" />
+    <path
+        android:fillColor="#185C3A"
+        android:pathData="M30,67 L38,75 L53,60 L58,65 L38,85 Z" />
+</vector>
