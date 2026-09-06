@@ -1,7 +1,10 @@
 package com.routina.app
 
+import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.setContent
 import com.routina.app.app.RoutinaApp
 import com.routina.app.ui.theme.RoutinaTheme
@@ -9,6 +12,10 @@ import com.routina.app.ui.theme.RoutinaTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT),
+        )
         val repository = (application as RoutinaApplication).container.routineRepository
         setContent {
             RoutinaTheme {

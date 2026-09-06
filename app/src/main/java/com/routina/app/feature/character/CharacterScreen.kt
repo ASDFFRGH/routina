@@ -2,6 +2,8 @@ package com.routina.app.feature.character
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,18 +39,22 @@ import com.routina.app.ui.theme.RoutinaTheme
 fun CharacterScreen(
     uiState: CharacterUiState,
     modifier: Modifier = Modifier,
+    showTitle: Boolean = true,
 ) {
     Column(
         modifier = modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
-        Text(
-            text = "キャラクター",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-        )
+        if (showTitle) {
+            Text(
+                text = "キャラクター",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+            )
+        }
 
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -62,7 +68,10 @@ fun CharacterScreen(
                 horizontalArrangement = Arrangement.spacedBy(20.dp),
             ) {
                 CharacterAvatar(stage = uiState.stage)
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
                     Text(
                         text = "レベル ${uiState.level}",
                         style = MaterialTheme.typography.headlineSmall,

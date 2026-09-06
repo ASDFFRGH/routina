@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -58,6 +59,8 @@ fun CalendarRoute(
     repository: RoutineRepository,
     onAddRoutine: () -> Unit,
     modifier: Modifier = Modifier,
+    showTopAppBar: Boolean = true,
+    showAddRoutineButton: Boolean = true,
     viewModel: CalendarViewModel = viewModel(factory = CalendarViewModelFactory(repository)),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -86,6 +89,8 @@ fun CalendarRoute(
         onToggleCompletion = viewModel::toggleCompletion,
         onAddRoutine = onAddRoutine,
         modifier = modifier,
+        showTopAppBar = showTopAppBar,
+        showAddRoutineButton = showAddRoutineButton,
     )
 }
 
@@ -98,11 +103,21 @@ fun CalendarScreen(
     onToggleCompletion: (ScheduledRoutine) -> Unit,
     onAddRoutine: () -> Unit,
     modifier: Modifier = Modifier,
+    showTopAppBar: Boolean = true,
+    showAddRoutineButton: Boolean = true,
 ) {
     Scaffold(
         modifier = modifier,
-        topBar = { TopAppBar(title = { Text("カレンダー") }) },
-        floatingActionButton = { FloatingActionButton(onClick = onAddRoutine) { Text("追加") } },
+        topBar = {
+            if (showTopAppBar) {
+                TopAppBar(title = { Text("カレンダー") })
+            }
+        },
+        floatingActionButton = {
+            if (showAddRoutineButton) {
+                FloatingActionButton(onClick = onAddRoutine) { Text("追加") }
+            }
+        },
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
@@ -177,7 +192,7 @@ private fun DayCell(
     val textColor = if (day.isCurrentMonth) colors.onSurface else colors.onSurface.copy(alpha = .35f)
     Column(
         modifier = modifier
-            .height(52.dp)
+            .heightIn(min = 52.dp)
             .padding(2.dp)
             .background(background, CircleShape)
             .semantics {
@@ -226,7 +241,14 @@ fun DayRoutineList(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Checkbox(checked = item.isCompleted, onCheckedChange = { onToggleCompletion(item) }, enabled = canEdit)
+                        Checkbox(
+                            checked = item.isCompleted,
+                            onCheckedChange = { onToggleCompletion(item) },
+                            enabled = canEdit,
+                            modifier = Modifier.semantics {
+                                contentDescription = "${item.routine.name}を${if (item.isCompleted) "未完了にする" else "完了にする"}"
+                            },
+                        )
                         Spacer(Modifier.width(4.dp))
                         Column {
                             Text(item.routine.name, style = MaterialTheme.typography.titleSmall)

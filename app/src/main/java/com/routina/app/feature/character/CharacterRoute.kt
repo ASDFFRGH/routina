@@ -11,6 +11,7 @@ import com.routina.app.domain.repository.RoutineRepository
 fun CharacterRoute(
     repository: RoutineRepository,
     modifier: Modifier = Modifier,
+    showTitle: Boolean = true,
 ) {
     val viewModel: CharacterViewModel = viewModel(
         factory = CharacterViewModelFactory(repository),
@@ -19,5 +20,6 @@ fun CharacterRoute(
     CharacterScreen(
         uiState = uiState.value,
         modifier = modifier,
+        showTitle = showTitle,
     )
 }

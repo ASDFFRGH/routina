@@ -16,6 +16,15 @@ private val LightColors = lightColorScheme(
     background = androidx.compose.ui.graphics.Color(0xFFF9FBF4), onBackground = androidx.compose.ui.graphics.Color(0xFF1A1C19),
     surface = androidx.compose.ui.graphics.Color(0xFFF9FBF4), onSurface = androidx.compose.ui.graphics.Color(0xFF1A1C19),
     surfaceVariant = androidx.compose.ui.graphics.Color(0xFFDEE5D8), onSurfaceVariant = androidx.compose.ui.graphics.Color(0xFF424940),
+    surfaceDim = androidx.compose.ui.graphics.Color(0xFFE0E4DD),
+    surfaceBright = androidx.compose.ui.graphics.Color(0xFFF9FBF4),
+    surfaceContainerLowest = androidx.compose.ui.graphics.Color(0xFFFFFFFF),
+    surfaceContainerLow = androidx.compose.ui.graphics.Color(0xFFF3F6EE),
+    surfaceContainer = androidx.compose.ui.graphics.Color(0xFFEDF0E9),
+    surfaceContainerHigh = androidx.compose.ui.graphics.Color(0xFFE7EBE3),
+    surfaceContainerHighest = androidx.compose.ui.graphics.Color(0xFFE1E5DD),
+    outline = androidx.compose.ui.graphics.Color(0xFF72796F),
+    outlineVariant = androidx.compose.ui.graphics.Color(0xFFC2C9BD),
 )
 private val DarkColors = darkColorScheme(
     primary = androidx.compose.ui.graphics.Color(0xFFA4D8AB), onPrimary = androidx.compose.ui.graphics.Color(0xFF10371C),
@@ -27,6 +36,15 @@ private val DarkColors = darkColorScheme(
     background = androidx.compose.ui.graphics.Color(0xFF121411), onBackground = androidx.compose.ui.graphics.Color(0xFFE2E4DD),
     surface = androidx.compose.ui.graphics.Color(0xFF121411), onSurface = androidx.compose.ui.graphics.Color(0xFFE2E4DD),
     surfaceVariant = androidx.compose.ui.graphics.Color(0xFF424940), onSurfaceVariant = androidx.compose.ui.graphics.Color(0xFFC2C9BD),
+    surfaceDim = androidx.compose.ui.graphics.Color(0xFF121411),
+    surfaceBright = androidx.compose.ui.graphics.Color(0xFF383A35),
+    surfaceContainerLowest = androidx.compose.ui.graphics.Color(0xFF0D0F0C),
+    surfaceContainerLow = androidx.compose.ui.graphics.Color(0xFF1A1C18),
+    surfaceContainer = androidx.compose.ui.graphics.Color(0xFF1E201C),
+    surfaceContainerHigh = androidx.compose.ui.graphics.Color(0xFF292B26),
+    surfaceContainerHighest = androidx.compose.ui.graphics.Color(0xFF343631),
+    outline = androidx.compose.ui.graphics.Color(0xFF8C9388),
+    outlineVariant = androidx.compose.ui.graphics.Color(0xFF424940),
 )
 
 @Composable
