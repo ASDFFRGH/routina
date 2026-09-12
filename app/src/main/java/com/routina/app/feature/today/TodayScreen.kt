@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -49,6 +50,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.routina.app.domain.repository.RoutineRepository
+import com.routina.app.ui.components.RoutinaMascot
 import java.time.Duration
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
@@ -120,11 +122,26 @@ fun TodayScreen(
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             item {
-                Column {
-                    Text(uiState.date.format(DateTimeFormatter.ofPattern("M月d日（E）", Locale.JAPANESE)), style = androidx.compose.material3.MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    if (uiState.scheduledCount > 0) {
-                        Text("${uiState.completedCount} / ${uiState.scheduledCount} 件完了", style = androidx.compose.material3.MaterialTheme.typography.bodyMedium, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(uiState.date.format(DateTimeFormatter.ofPattern("M月d日（E）", Locale.JAPANESE)), style = androidx.compose.material3.MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        if (uiState.scheduledCount > 0) {
+                            Text("${uiState.completedCount} / ${uiState.scheduledCount} 件完了", style = androidx.compose.material3.MaterialTheme.typography.bodyMedium, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Text(
+                            todayEncouragement(uiState),
+                            style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+                            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
+                    RoutinaMascot(
+                        modifier = Modifier.size(72.dp),
+                        contentDescription = "Routinaのマスコット",
+                    )
                 }
             }
             when {
@@ -172,6 +189,13 @@ fun TodayScreen(
             }
         }
     }
+}
+
+private fun todayEncouragement(uiState: TodayUiState): String = when {
+    uiState.isLoading -> "今日の予定を確認しています"
+    uiState.isAllDone -> "今日もおつかれさま！"
+    uiState.isEmpty -> "自分のペースで始めましょう"
+    else -> "小さな一歩を続けましょう"
 }
 
 @Composable private fun NextRoutineCard(item: TodayRoutine, isProcessing: Boolean, onComplete: (TodayRoutine) -> Unit) {

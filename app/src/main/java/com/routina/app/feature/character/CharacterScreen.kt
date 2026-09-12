@@ -1,6 +1,5 @@
 package com.routina.app.feature.character
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -8,10 +7,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,15 +20,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.routina.app.domain.model.CharacterStage
+import com.routina.app.ui.components.RoutinaMascot
 import com.routina.app.ui.theme.RoutinaTheme
 
 /** Stateless character screen, suitable for previews and UI tests. */
@@ -62,14 +57,14 @@ fun CharacterScreen(
                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
             ),
         ) {
-            Row(
+            Column(
                 modifier = Modifier.padding(20.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 CharacterAvatar(stage = uiState.stage)
                 Column(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Text(
@@ -77,10 +72,7 @@ fun CharacterScreen(
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                     )
-                    Text(
-                        text = stageLabel(uiState.stage),
-                        style = MaterialTheme.typography.titleMedium,
-                    )
+                    StageBadge(uiState.stage)
                     Text(
                         text = stageDescription(uiState.stage),
                         style = MaterialTheme.typography.bodyMedium,
@@ -147,65 +139,29 @@ private fun CharacterAvatar(stage: CharacterStage) {
     val description = "${stageLabel(stage)}のキャラクター。${stageDescription(stage)}"
     Box(
         modifier = Modifier
-            .size(108.dp)
-            .semantics { contentDescription = description },
+            .size(176.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val centerX = size.width / 2
-            val bodyTop = size.height * .43f
-            val headRadius = size.width * .18f
-            val bodyColor = when (stage) {
-                CharacterStage.NOVICE -> Color(0xFF4E7D8A)
-                CharacterStage.ADVENTURER -> Color(0xFF5D5AA7)
-                CharacterStage.MASTER -> Color(0xFF8A5A18)
-            }
-            val accentColor = when (stage) {
-                CharacterStage.NOVICE -> Color(0xFFB9E3EC)
-                CharacterStage.ADVENTURER -> Color(0xFFFFC857)
-                CharacterStage.MASTER -> Color(0xFFFFE08A)
-            }
-
-            drawCircle(color = bodyColor.copy(alpha = .16f), radius = size.minDimension / 2)
-            drawCircle(color = accentColor, radius = headRadius, center = Offset(centerX, size.height * .28f))
-            drawRoundRect(
-                color = bodyColor,
-                topLeft = Offset(size.width * .30f, bodyTop),
-                size = androidx.compose.ui.geometry.Size(size.width * .40f, size.height * .38f),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.width * .12f),
-            )
-
-            when (stage) {
-                CharacterStage.NOVICE -> {
-                    drawCircle(Color.White, radius = size.width * .035f, center = Offset(size.width * .44f, size.height * .28f))
-                    drawCircle(Color.White, radius = size.width * .035f, center = Offset(size.width * .56f, size.height * .28f))
-                }
-                CharacterStage.ADVENTURER -> {
-                    drawLine(
-                        color = accentColor,
-                        start = Offset(size.width * .72f, size.height * .68f),
-                        end = Offset(size.width * .88f, size.height * .35f),
-                        strokeWidth = size.width * .055f,
-                    )
-                    drawLine(
-                        color = Color.White,
-                        start = Offset(size.width * .80f, size.height * .56f),
-                        end = Offset(size.width * .92f, size.height * .62f),
-                        strokeWidth = size.width * .04f,
-                    )
-                }
-                CharacterStage.MASTER -> {
-                    val crownY = size.height * .12f
-                    drawLine(accentColor, Offset(size.width * .34f, crownY + 12f), Offset(size.width * .40f, crownY - 4f), size.width * .05f)
-                    drawLine(accentColor, Offset(size.width * .40f, crownY - 4f), Offset(centerX, crownY + 12f), size.width * .05f)
-                    drawLine(accentColor, Offset(centerX, crownY + 12f), Offset(size.width * .60f, crownY - 4f), size.width * .05f)
-                    drawLine(accentColor, Offset(size.width * .60f, crownY - 4f), Offset(size.width * .66f, crownY + 12f), size.width * .05f)
-                    drawCircle(accentColor, radius = size.width * .045f, center = Offset(size.width * .18f, size.height * .32f), style = Stroke(size.width * .025f))
-                    drawCircle(accentColor, radius = size.width * .035f, center = Offset(size.width * .84f, size.height * .45f), style = Stroke(size.width * .02f))
-                }
-            }
-        }
+        RoutinaMascot(contentDescription = description, modifier = Modifier.fillMaxSize())
     }
+}
+
+@Composable
+private fun StageBadge(stage: CharacterStage) {
+    val accent = when (stage) {
+        CharacterStage.NOVICE -> MaterialTheme.colorScheme.primary
+        CharacterStage.ADVENTURER -> MaterialTheme.colorScheme.tertiary
+        CharacterStage.MASTER -> MaterialTheme.colorScheme.onSecondaryContainer
+    }
+    Text(
+        text = stageLabel(stage),
+        modifier = Modifier
+            .background(accent.copy(alpha = .16f), RoundedCornerShape(999.dp))
+            .padding(horizontal = 12.dp, vertical = 5.dp),
+        color = accent,
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.SemiBold,
+    )
 }
 
 private fun stageLabel(stage: CharacterStage): String = when (stage) {
