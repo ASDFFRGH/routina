@@ -33,7 +33,7 @@ Debug APKは `app/build/outputs/apk/debug/app-debug.apk` に生成されます�
 
 ## GitHub Releases
 
-`v0.1.0` のような `v*` タグをpushすると、GitHub Actionsがテスト・lint・debug APKのビルドを行い、GitHub Releasesのプレリリースとして公開します。配布物はdebug署名済みのプレビュー版であり、本番署名版ではありません。
+`v0.1.0` のような `v*` タグをpushすると、GitHub Actionsがテスト・lint・debug APKのビルドを行い、GitHub Releasesの正式リリースとして公開します。配布物はdebug署名済みであり、本番署名版ではありません。
 
 CIでは実行ごとに一時的なdebug鍵で署名されるため、将来のAPKでアプリを上書き更新することはできません。更新時は既存アプリのアンインストールが必要となり、端末内に保存したデータは削除されます。
 
