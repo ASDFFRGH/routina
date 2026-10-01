@@ -17,6 +17,8 @@ interface RoutineRepository {
 
     suspend fun archiveRoutine(routineId: String, archivedOn: LocalDate)
 
+    suspend fun reorderRoutines(routineIds: List<String>)
+
     suspend fun completeRoutine(
         routineId: String,
         scheduledDate: LocalDate,

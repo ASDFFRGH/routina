@@ -13,4 +13,5 @@ data class RoutineEntity(
     val rewardPoints: Int,
     val createdAtEpochMillis: Long,
     val archivedEpochDay: Long?,
+    val sortOrder: Long,
 )

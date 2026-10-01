@@ -174,6 +174,7 @@ private class TodayFakeRepository : RoutineRepository {
     override fun observeProfile(): Flow<Profile> = flowOf(Profile())
     override suspend fun createRoutine(routine: Routine) = Unit
     override suspend fun archiveRoutine(routineId: String, archivedOn: LocalDate) = Unit
+    override suspend fun reorderRoutines(routineIds: List<String>) = Unit
     override suspend fun completeRoutine(routineId: String, scheduledDate: LocalDate, completedAtEpochMillis: Long): CompletionResult {
         completeCalls++
         completeStarted.complete(Unit)

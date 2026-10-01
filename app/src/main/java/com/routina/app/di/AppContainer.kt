@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.routina.app.data.RoutineRepositoryImpl
 import com.routina.app.data.local.RoutinaDatabase
+import com.routina.app.data.local.MIGRATION_1_2
 import com.routina.app.domain.repository.RoutineRepository
 
 class AppContainer(context: Context) {
@@ -11,7 +12,7 @@ class AppContainer(context: Context) {
         context.applicationContext,
         RoutinaDatabase::class.java,
         DATABASE_NAME,
-    ).build()
+    ).addMigrations(MIGRATION_1_2).build()
 
     val routineRepository: RoutineRepository = RoutineRepositoryImpl(database)
 

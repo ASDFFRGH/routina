@@ -37,11 +37,21 @@ class RoutineRepositoryImpl(
         }
 
     override suspend fun createRoutine(routine: Routine) {
-        routineDao.insert(routine.toEntity())
+        database.withTransaction {
+            routineDao.insert(routine.copy(sortOrder = routineDao.maxSortOrder() + 1).toEntity())
+        }
     }
 
     override suspend fun archiveRoutine(routineId: String, archivedOn: LocalDate) {
         routineDao.archive(routineId, archivedOn.toEpochDay())
+    }
+
+    override suspend fun reorderRoutines(routineIds: List<String>) {
+        database.withTransaction {
+            val activeIds = routineDao.activeIds()
+            if (routineIds.toSet() != activeIds.toSet() || routineIds.size != activeIds.size) return@withTransaction
+            routineIds.forEachIndexed { index, id -> routineDao.updateSortOrder(id, index.toLong()) }
+        }
     }
 
     override suspend fun completeRoutine(
@@ -96,6 +106,7 @@ private fun RoutineEntity.toDomain(): Routine = Routine(
     rewardPoints = rewardPoints,
     createdAtEpochMillis = createdAtEpochMillis,
     archivedEpochDay = archivedEpochDay,
+    sortOrder = sortOrder,
 )
 
 private fun Routine.toEntity(): RoutineEntity = RoutineEntity(
@@ -107,6 +118,7 @@ private fun Routine.toEntity(): RoutineEntity = RoutineEntity(
     rewardPoints = rewardPoints,
     createdAtEpochMillis = createdAtEpochMillis,
     archivedEpochDay = archivedEpochDay,
+    sortOrder = sortOrder,
 )
 
 private fun RoutineCompletionEntity.toDomain(): RoutineCompletion = RoutineCompletion(

@@ -13,14 +13,30 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.launch
 
 class RoutineListViewModel(
     private val repository: RoutineRepository,
     private val todayProvider: () -> LocalDate = LocalDate::now,
 ) : ViewModel() {
-    val routines: StateFlow<List<Routine>> = repository.observeRoutines()
+    private val currentToday = kotlinx.coroutines.flow.MutableStateFlow(todayProvider())
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val routines: StateFlow<List<RoutineListItem>> = currentToday.flatMapLatest { today ->
+        combine(
+            repository.observeRoutines(),
+            repository.observeCompletions(LocalDate.MIN, today),
+        ) { routines, completions ->
+            routines.map { RoutineListItem(it, routineStreak(it, completions, today)) }
+        }
+    }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun refreshToday() {
+        currentToday.value = todayProvider()
+    }
 
     fun archive(routine: Routine) {
         viewModelScope.launch { archiveIfActive(routine) }
@@ -36,6 +52,10 @@ class RoutineListViewModel(
      * today's schedule and completion history in the calendar.
      */
     internal fun effectiveArchiveDate(): LocalDate = todayProvider().plusDays(1)
+
+    fun reorder(items: List<RoutineListItem>) {
+        viewModelScope.launch { repository.reorderRoutines(items.filter { it.routine.isActive() }.map { it.routine.id }) }
+    }
 }
 
 class RoutineFormViewModel(

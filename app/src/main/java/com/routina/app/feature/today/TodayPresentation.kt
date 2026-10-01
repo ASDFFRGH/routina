@@ -44,7 +44,7 @@ fun todayUiState(
         .toSet()
     val scheduled = routines.asSequence()
         .filter { RecurrenceCalculator.isScheduledOn(it, date) }
-        .sortedWith(compareBy<Routine> { it.createdAtEpochMillis }.thenBy { it.id })
+        .sortedWith(compareBy<Routine> { it.sortOrder }.thenBy { it.createdAtEpochMillis }.thenBy { it.id })
         .map { TodayRoutine(it, date, it.id in completedIds) }
         .toList()
     return TodayUiState(

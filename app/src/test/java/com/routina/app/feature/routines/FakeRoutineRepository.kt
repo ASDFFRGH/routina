@@ -20,6 +20,7 @@ internal class FakeRoutineRepository : RoutineRepository {
         this.archivedRoutineId = routineId
         this.archivedOn = archivedOn
     }
+    override suspend fun reorderRoutines(routineIds: List<String>) = Unit
     override suspend fun completeRoutine(routineId: String, scheduledDate: LocalDate, completedAtEpochMillis: Long) = CompletionResult.COMPLETED
     override suspend fun cancelCompletion(routineId: String, scheduledDate: LocalDate) = false
 }

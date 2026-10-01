@@ -26,6 +26,17 @@ class TodayPresentationTest {
     }
 
     @Test
+    fun `saved sort order takes precedence over creation time for pending and next routine`() {
+        val older = routine(id = "older", createdAt = 1, sortOrder = 2)
+        val newer = routine(id = "newer", createdAt = 2, sortOrder = 1)
+
+        val state = todayUiState(date, listOf(older, newer), emptyList())
+
+        assertEquals(listOf("newer", "older"), state.pending.map { it.routine.id })
+        assertEquals("newer", state.nextRoutine?.routine?.id)
+    }
+
+    @Test
     fun `separates completed routines and recognizes all done`() {
         val first = routine(id = "first", createdAt = 1)
         val second = routine(id = "second", createdAt = 2)
@@ -40,7 +51,13 @@ class TodayPresentationTest {
         assertTrue(complete.isAllDone)
     }
 
-    private fun routine(id: String, createdAt: Long, frequency: Frequency = Frequency.EveryDays(1), start: LocalDate = date) = Routine(
+    private fun routine(
+        id: String,
+        createdAt: Long,
+        frequency: Frequency = Frequency.EveryDays(1),
+        start: LocalDate = date,
+        sortOrder: Long = createdAt,
+    ) = Routine(
         id = id,
         name = id,
         startDate = start,
@@ -48,5 +65,6 @@ class TodayPresentationTest {
         rewardXp = 5,
         rewardPoints = 1,
         createdAtEpochMillis = createdAt,
+        sortOrder = sortOrder,
     )
 }

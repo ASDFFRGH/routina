@@ -10,9 +10,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
@@ -30,21 +35,41 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.routina.app.domain.model.Routine
 import com.routina.app.domain.repository.RoutineRepository
 import java.time.Instant
 import java.time.LocalDate
+import java.time.Duration
+import java.time.ZonedDateTime
 import java.time.ZoneOffset
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 
 @Composable
 fun RoutineListRoute(
@@ -54,17 +79,83 @@ fun RoutineListRoute(
     viewModel: RoutineListViewModel = viewModel(factory = RoutineListViewModelFactory(repository)),
 ) {
     val routines by viewModel.routines.collectAsStateWithLifecycle()
-    RoutineListScreen(routines, onAddRoutine, viewModel::archive, modifier)
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, viewModel) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) viewModel.refreshToday()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    LaunchedEffect(viewModel) {
+        while (isActive) {
+            viewModel.refreshToday()
+            val now = ZonedDateTime.now()
+            delay(Duration.between(now, now.toLocalDate().plusDays(1).atStartOfDay(now.zone)).toMillis().coerceAtLeast(1))
+        }
+    }
+    RoutineListScreen(routines, onAddRoutine, viewModel::archive, viewModel::reorder, modifier)
 }
 
 @Composable
 fun RoutineListScreen(
-    routines: List<Routine>,
+    routines: List<RoutineListItem>,
     onAddRoutine: () -> Unit,
     onArchive: (Routine) -> Unit,
+    onReorder: (List<RoutineListItem>) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val ordered = remember(routines) { routines.sortedWith(compareBy<Routine> { !it.isActive() }.thenBy { it.name }) }
+    var ordered by remember(routines) { mutableStateOf(routines.sortedWith(compareBy<RoutineListItem> { !it.routine.isActive() }.thenBy { it.routine.sortOrder })) }
+    var draggingId by remember { mutableStateOf<String?>(null) }
+    var dragOffset by remember { mutableStateOf(0f) }
+    var dragStartingOrder by remember { mutableStateOf<List<RoutineListItem>?>(null) }
+    val listState = rememberLazyListState()
+    val edgeScrollThreshold = with(LocalDensity.current) { 72.dp.toPx() }
+    val currentOnReorder by rememberUpdatedState(onReorder)
+
+    fun move(id: String, direction: Int): Boolean {
+        val from = ordered.indexOfFirst { it.routine.id == id }
+        val destination = from + direction
+        if (from >= 0 && destination in ordered.indices && ordered[destination].routine.isActive()) {
+            ordered = ordered.toMutableList().also { list ->
+                val moved = list.removeAt(from)
+                list.add(destination, moved)
+            }
+            return true
+        }
+        return false
+    }
+    fun applyDragDelta(id: String, delta: Float, rowHeight: Float) {
+        dragOffset += delta
+        while (dragOffset >= rowHeight) { move(id, 1); dragOffset -= rowHeight }
+        while (dragOffset <= -rowHeight) { move(id, -1); dragOffset += rowHeight }
+    }
+
+    // Keep the dragged row under the pointer while it is held near a viewport edge.
+    // The reordered item remains keyed by id, so the gesture continues after it changes index.
+    LaunchedEffect(draggingId) {
+        while (isActive && draggingId != null) {
+            val id = draggingId ?: break
+            val layout = listState.layoutInfo
+            val item = layout.visibleItemsInfo.firstOrNull { it.key == id }
+            if (item != null) {
+                val top = item.offset + dragOffset
+                val bottom = top + item.size
+                val scrollBy = when {
+                    top < layout.viewportStartOffset + edgeScrollThreshold ->
+                        (top - (layout.viewportStartOffset + edgeScrollThreshold)).coerceAtLeast(-edgeScrollThreshold)
+                    bottom > layout.viewportEndOffset - edgeScrollThreshold ->
+                        (bottom - (layout.viewportEndOffset - edgeScrollThreshold)).coerceAtMost(edgeScrollThreshold)
+                    else -> 0f
+                }
+                if (scrollBy != 0f) {
+                    val consumed = listState.scrollBy(scrollBy)
+                    applyDragDelta(id, consumed, item.size.coerceAtLeast(1).toFloat())
+                }
+            }
+            delay(16)
+        }
+    }
     Scaffold(
         modifier = modifier,
         topBar = { TopAppBar(title = { Text("ルーティーン") }) },
@@ -82,10 +173,40 @@ fun RoutineListScreen(
                 Button(onClick = onAddRoutine) { Text("ルーティーンを追加") }
             }
         } else {
-            LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
-                items(ordered, key = Routine::id) { routine ->
-                    RoutineRow(routine, onArchive)
-                    Divider()
+            LazyColumn(state = listState, modifier = Modifier.fillMaxSize().padding(padding)) {
+                items(ordered, key = { it.routine.id }) { item ->
+                    Column(modifier = if (draggingId == item.routine.id) Modifier else Modifier.animateItem()) {
+                        RoutineRow(
+                            item = item,
+                            onArchive = onArchive,
+                            isDragging = draggingId == item.routine.id,
+                            dragOffset = if (draggingId == item.routine.id) dragOffset else 0f,
+                            onDragStart = {
+                                draggingId = item.routine.id
+                                dragOffset = 0f
+                                dragStartingOrder = ordered
+                            },
+                            onDragDelta = { delta, rowHeight ->
+                                applyDragDelta(item.routine.id, delta, rowHeight)
+                            },
+                            onMoveByAccessibility = { direction ->
+                                move(item.routine.id, direction).also { moved ->
+                                    if (moved) currentOnReorder(ordered)
+                                }
+                            },
+                            onDragEnd = { commit ->
+                                if (commit) {
+                                    currentOnReorder(ordered)
+                                } else {
+                                    dragStartingOrder?.let { ordered = it }
+                                }
+                                draggingId = null
+                                dragOffset = 0f
+                                dragStartingOrder = null
+                            },
+                        )
+                        Divider()
+                    }
                 }
             }
         }
@@ -93,18 +214,64 @@ fun RoutineListScreen(
 }
 
 @Composable
-private fun RoutineRow(routine: Routine, onArchive: (Routine) -> Unit) {
+private fun RoutineRow(
+    item: RoutineListItem,
+    onArchive: (Routine) -> Unit,
+    isDragging: Boolean,
+    dragOffset: Float,
+    onDragStart: () -> Unit,
+    onDragDelta: (delta: Float, rowHeight: Float) -> Unit,
+    onDragEnd: (commit: Boolean) -> Unit,
+    onMoveByAccessibility: (Int) -> Boolean,
+) {
+    val routine = item.routine
+    var rowHeight by remember(routine.id) { mutableStateOf(1f) }
+    val currentOnDragStart by rememberUpdatedState(onDragStart)
+    val currentOnDragDelta by rememberUpdatedState(onDragDelta)
+    val currentOnDragEnd by rememberUpdatedState(onDragEnd)
+    val currentOnMoveByAccessibility by rememberUpdatedState(onMoveByAccessibility)
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .onSizeChanged { rowHeight = it.height.coerceAtLeast(1).toFloat() }
+            .graphicsLayer { translationY = dragOffset }
+            .zIndex(if (isDragging) 1f else 0f)
+            .shadow(if (isDragging) 8.dp else 0.dp)
+            .padding(horizontal = 20.dp, vertical = 14.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(routine.name, style = MaterialTheme.typography.titleMedium)
             Text("${routine.frequency.displayName()} ・ 開始 ${routine.startDate}")
+            Text("連続継続日数: ${item.streak}日（予定日）")
             Text("報酬: ${routine.rewardXp} XP / ${routine.rewardPoints} ポイント")
             if (!routine.isActive()) Text("アーカイブ済み")
         }
         if (routine.isActive()) {
+            Text(
+                "☰",
+                modifier = Modifier
+                    .size(48.dp)
+                    .semantics {
+                        contentDescription = "${routine.name}を並び替え"
+                        customActions = listOf(
+                            CustomAccessibilityAction("上に移動") { currentOnMoveByAccessibility(-1) },
+                            CustomAccessibilityAction("下に移動") { currentOnMoveByAccessibility(1) },
+                        )
+                    }
+                    .pointerInput(routine.id) {
+                        detectDragGesturesAfterLongPress(
+                            onDragStart = { currentOnDragStart() },
+                            onDragCancel = { currentOnDragEnd(false) },
+                            onDragEnd = { currentOnDragEnd(true) },
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                currentOnDragDelta(dragAmount.y, rowHeight)
+                            },
+                        )
+                    }
+                    .wrapContentSize(Alignment.Center),
+            )
             Spacer(Modifier.width(8.dp))
             TextButton(onClick = { onArchive(routine) }) { Text("アーカイブ") }
         }

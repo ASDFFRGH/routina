@@ -12,4 +12,6 @@ data class Routine(
     val rewardPoints: Int,
     val createdAtEpochMillis: Long,
     val archivedEpochDay: Long? = null,
+    /** User-controlled position among active routines. */
+    val sortOrder: Long = createdAtEpochMillis,
 )

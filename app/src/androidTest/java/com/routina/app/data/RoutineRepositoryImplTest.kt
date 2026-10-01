@@ -102,6 +102,23 @@ class RoutineRepositoryImplTest {
         assertEquals(1, repository.observeCompletions(today, today.plusDays(1)).first().size)
     }
 
+    @Test
+    fun reorderPersistsAndNewRoutineAppends() = runBlocking {
+        val first = routine(LocalDate.of(2026, 9, 1)).copy(id = "first", createdAtEpochMillis = 1)
+        val second = routine(LocalDate.of(2026, 9, 2)).copy(id = "second", createdAtEpochMillis = 2)
+        val third = routine(LocalDate.of(2026, 9, 3)).copy(id = "third", createdAtEpochMillis = 3)
+        repository.createRoutine(first)
+        repository.createRoutine(second)
+        repository.createRoutine(third)
+
+        repository.reorderRoutines(listOf(third.id, first.id, second.id))
+
+        assertEquals(listOf(third.id, first.id, second.id), repository.observeRoutines().first().map { it.id })
+        val appended = routine(LocalDate.of(2026, 9, 3)).copy(id = "appended", createdAtEpochMillis = 4)
+        repository.createRoutine(appended)
+        assertEquals(listOf(third.id, first.id, second.id, appended.id), repository.observeRoutines().first().map { it.id })
+    }
+
     private fun routine(startDate: LocalDate, frequency: Frequency = Frequency.Daily) = Routine(
         id = "routine-${startDate.toEpochDay()}-${frequency.intervalDays}",
         name = "Read",
