@@ -51,6 +51,27 @@ class TodayPresentationTest {
         assertTrue(complete.isAllDone)
     }
 
+    @Test
+    fun `reorder replaces pending slots but preserves completed and unscheduled slots`() {
+        val first = routine("first", 1, sortOrder = 0)
+        val hidden = routine("hidden", 2, sortOrder = 1)
+        val second = routine("second", 3, sortOrder = 2)
+        val completed = routine("completed", 4, sortOrder = 3)
+
+        assertEquals(
+            listOf("second", "hidden", "first", "completed"),
+            reorderedActiveIds(listOf(first, hidden, second, completed), listOf("second", "first")),
+        )
+    }
+
+    @Test
+    fun `reorder rejects duplicate unknown or singleton pending ids`() {
+        val routines = listOf(routine("one", 1), routine("two", 2))
+        assertEquals(null, reorderedActiveIds(routines, listOf("one")))
+        assertEquals(null, reorderedActiveIds(routines, listOf("one", "one")))
+        assertEquals(null, reorderedActiveIds(routines, listOf("one", "missing")))
+    }
+
     private fun routine(
         id: String,
         createdAt: Long,

@@ -90,6 +90,8 @@ fun CharacterScreen(
             value = "${uiState.totalXp} XP",
         )
 
+        StreakSummary(uiState.streaks)
+
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
                 text = "次のレベルまで ${uiState.xpToNextLevel} XP",
@@ -108,6 +110,29 @@ fun CharacterScreen(
                 text = "${uiState.currentLevelXp} / 100 XP",
                 style = MaterialTheme.typography.bodyMedium,
             )
+        }
+    }
+}
+
+@Composable
+private fun StreakSummary(streaks: List<CharacterRoutineStreak>) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text("継続中", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text("連続継続日数（予定日）", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (streaks.isEmpty()) {
+                Text("継続中のルーティーンはありません", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else {
+                streaks.forEach { streak ->
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(streak.name, modifier = Modifier.weight(1f))
+                        Text("${streak.days}日", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
         }
     }
 }

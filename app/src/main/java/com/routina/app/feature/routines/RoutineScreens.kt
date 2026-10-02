@@ -17,7 +17,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
-import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
@@ -47,13 +46,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -61,6 +60,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import com.routina.app.ui.components.rememberRoutineDragState
 import com.routina.app.domain.model.Routine
 import com.routina.app.domain.repository.RoutineRepository
 import java.time.Instant
@@ -106,11 +106,8 @@ fun RoutineListScreen(
     modifier: Modifier = Modifier,
 ) {
     var ordered by remember(routines) { mutableStateOf(routines.sortedWith(compareBy<RoutineListItem> { !it.routine.isActive() }.thenBy { it.routine.sortOrder })) }
-    var draggingId by remember { mutableStateOf<String?>(null) }
-    var dragOffset by remember { mutableStateOf(0f) }
     var dragStartingOrder by remember { mutableStateOf<List<RoutineListItem>?>(null) }
     val listState = rememberLazyListState()
-    val edgeScrollThreshold = with(LocalDensity.current) { 72.dp.toPx() }
     val currentOnReorder by rememberUpdatedState(onReorder)
 
     fun move(id: String, direction: Int): Boolean {
@@ -125,36 +122,17 @@ fun RoutineListScreen(
         }
         return false
     }
-    fun applyDragDelta(id: String, delta: Float, rowHeight: Float) {
-        dragOffset += delta
-        while (dragOffset >= rowHeight) { move(id, 1); dragOffset -= rowHeight }
-        while (dragOffset <= -rowHeight) { move(id, -1); dragOffset += rowHeight }
-    }
-
-    // Keep the dragged row under the pointer while it is held near a viewport edge.
-    // The reordered item remains keyed by id, so the gesture continues after it changes index.
-    LaunchedEffect(draggingId) {
-        while (isActive && draggingId != null) {
-            val id = draggingId ?: break
-            val layout = listState.layoutInfo
-            val item = layout.visibleItemsInfo.firstOrNull { it.key == id }
-            if (item != null) {
-                val top = item.offset + dragOffset
-                val bottom = top + item.size
-                val scrollBy = when {
-                    top < layout.viewportStartOffset + edgeScrollThreshold ->
-                        (top - (layout.viewportStartOffset + edgeScrollThreshold)).coerceAtLeast(-edgeScrollThreshold)
-                    bottom > layout.viewportEndOffset - edgeScrollThreshold ->
-                        (bottom - (layout.viewportEndOffset - edgeScrollThreshold)).coerceAtMost(edgeScrollThreshold)
-                    else -> 0f
-                }
-                if (scrollBy != 0f) {
-                    val consumed = listState.scrollBy(scrollBy)
-                    applyDragDelta(id, consumed, item.size.coerceAtLeast(1).toFloat())
-                }
-            }
-            delay(16)
+    val dragState = rememberRoutineDragState(listState, ordered.filter { it.routine.isActive() }.map { it.routine.id }) { id, targetId ->
+        val from = ordered.indexOfFirst { it.routine.id == id }
+        val target = ordered.indexOfFirst { it.routine.id == targetId }
+        if (from < 0 || target < 0) false else {
+            ordered = ordered.toMutableList().also { it.add(target, it.removeAt(from)) }
+            true
         }
+    }
+    LaunchedEffect(routines) {
+        dragState.reset()
+        dragStartingOrder = null
     }
     Scaffold(
         modifier = modifier,
@@ -175,33 +153,31 @@ fun RoutineListScreen(
         } else {
             LazyColumn(state = listState, modifier = Modifier.fillMaxSize().padding(padding)) {
                 items(ordered, key = { it.routine.id }) { item ->
-                    Column(modifier = if (draggingId == item.routine.id) Modifier else Modifier.animateItem()) {
+                    Column(
+                        modifier = (if (dragState.draggingId == item.routine.id) Modifier.zIndex(1f) else Modifier.animateItem())
+                            .graphicsLayer { translationY = dragState.translation(item.routine.id) },
+                    ) {
                         RoutineRow(
                             item = item,
                             onArchive = onArchive,
-                            isDragging = draggingId == item.routine.id,
-                            dragOffset = if (draggingId == item.routine.id) dragOffset else 0f,
-                            onDragStart = {
-                                draggingId = item.routine.id
-                                dragOffset = 0f
+                            isDragging = dragState.draggingId == item.routine.id,
+                            onDragStart = { touchY ->
+                                dragState.start(item.routine.id, touchY)
                                 dragStartingOrder = ordered
                             },
-                            onDragDelta = { delta, rowHeight ->
-                                applyDragDelta(item.routine.id, delta, rowHeight)
-                            },
+                            onDragDelta = dragState::drag,
                             onMoveByAccessibility = { direction ->
                                 move(item.routine.id, direction).also { moved ->
                                     if (moved) currentOnReorder(ordered)
                                 }
                             },
                             onDragEnd = { commit ->
-                                if (commit) {
+                                if (commit && dragStartingOrder != null) {
                                     currentOnReorder(ordered)
                                 } else {
                                     dragStartingOrder?.let { ordered = it }
                                 }
-                                draggingId = null
-                                dragOffset = 0f
+                                dragState.reset()
                                 dragStartingOrder = null
                             },
                         )
@@ -218,25 +194,47 @@ private fun RoutineRow(
     item: RoutineListItem,
     onArchive: (Routine) -> Unit,
     isDragging: Boolean,
-    dragOffset: Float,
-    onDragStart: () -> Unit,
-    onDragDelta: (delta: Float, rowHeight: Float) -> Unit,
+    onDragStart: (Float) -> Unit,
+    onDragDelta: (Float) -> Unit,
     onDragEnd: (commit: Boolean) -> Unit,
     onMoveByAccessibility: (Int) -> Boolean,
 ) {
     val routine = item.routine
-    var rowHeight by remember(routine.id) { mutableStateOf(1f) }
     val currentOnDragStart by rememberUpdatedState(onDragStart)
     val currentOnDragDelta by rememberUpdatedState(onDragDelta)
     val currentOnDragEnd by rememberUpdatedState(onDragEnd)
     val currentOnMoveByAccessibility by rememberUpdatedState(onMoveByAccessibility)
+    val haptic = LocalHapticFeedback.current
+    val reorderModifier = if (routine.isActive()) {
+        Modifier
+            .semantics {
+                contentDescription = "${routine.name}を長押しして並び替え"
+                customActions = listOf(
+                    CustomAccessibilityAction("上に移動") { currentOnMoveByAccessibility(-1) },
+                    CustomAccessibilityAction("下に移動") { currentOnMoveByAccessibility(1) },
+                )
+            }
+            .pointerInput(routine.id) {
+                detectDragGesturesAfterLongPress(
+                    onDragStart = { touch ->
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        currentOnDragStart(touch.y)
+                    },
+                    onDragCancel = { currentOnDragEnd(false) },
+                    onDragEnd = { currentOnDragEnd(true) },
+                    onDrag = { change, dragAmount ->
+                        change.consume()
+                        currentOnDragDelta(dragAmount.y)
+                    },
+                )
+            }
+    } else Modifier
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .onSizeChanged { rowHeight = it.height.coerceAtLeast(1).toFloat() }
-            .graphicsLayer { translationY = dragOffset }
             .zIndex(if (isDragging) 1f else 0f)
             .shadow(if (isDragging) 8.dp else 0.dp)
+            .then(reorderModifier)
             .padding(horizontal = 20.dp, vertical = 14.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
@@ -252,24 +250,6 @@ private fun RoutineRow(
                 "☰",
                 modifier = Modifier
                     .size(48.dp)
-                    .semantics {
-                        contentDescription = "${routine.name}を並び替え"
-                        customActions = listOf(
-                            CustomAccessibilityAction("上に移動") { currentOnMoveByAccessibility(-1) },
-                            CustomAccessibilityAction("下に移動") { currentOnMoveByAccessibility(1) },
-                        )
-                    }
-                    .pointerInput(routine.id) {
-                        detectDragGesturesAfterLongPress(
-                            onDragStart = { currentOnDragStart() },
-                            onDragCancel = { currentOnDragEnd(false) },
-                            onDragEnd = { currentOnDragEnd(true) },
-                            onDrag = { change, dragAmount ->
-                                change.consume()
-                                currentOnDragDelta(dragAmount.y, rowHeight)
-                            },
-                        )
-                    }
                     .wrapContentSize(Alignment.Center),
             )
             Spacer(Modifier.width(8.dp))

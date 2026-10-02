@@ -53,3 +53,13 @@ fun todayUiState(
         completed = scheduled.filter(TodayRoutine::isCompleted),
     )
 }
+
+/** Returns the complete active order after replacing only the pending routine slots. */
+internal fun reorderedActiveIds(activeRoutines: List<Routine>, pendingIds: List<String>): List<String>? {
+    val active = activeRoutines.filter { it.archivedEpochDay == null }
+        .sortedWith(compareBy<Routine> { it.sortOrder }.thenBy { it.createdAtEpochMillis }.thenBy { it.id })
+    if (pendingIds.size < 2 || pendingIds.toSet().size != pendingIds.size || pendingIds.any { id -> active.none { it.id == id } }) return null
+    val pendingIdSet = pendingIds.toSet()
+    val reordered = pendingIds.iterator()
+    return active.map { routine -> if (routine.id in pendingIdSet) reordered.next() else routine.id }
+}

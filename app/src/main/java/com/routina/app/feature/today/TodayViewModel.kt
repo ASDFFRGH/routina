@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -27,11 +28,15 @@ class TodayViewModel(
     private val refreshVersion = MutableStateFlow(0)
     private val actionError = MutableStateFlow<String?>(null)
     private val isProcessing = MutableStateFlow(false)
+    private val latestRoutines = MutableStateFlow(emptyList<com.routina.app.domain.model.Routine>())
+    private val latestPendingIds = MutableStateFlow(emptySet<String>())
 
     private val content = combine(currentToday, refreshVersion) { date, _ -> date }
         .flatMapLatest { date ->
-            combine(repository.observeRoutines(), repository.observeCompletions(date, date)) { routines, completions ->
+            combine(repository.observeRoutines().onEach { latestRoutines.value = it }, repository.observeCompletions(date, date)) { routines, completions ->
                 todayUiState(date, routines, completions)
+            }.onEach { state ->
+                latestPendingIds.value = state.pending.map { it.routine.id }.toSet()
             }.onStart {
                 emit(TodayUiState.loading(date))
             }.catch { error ->
@@ -63,6 +68,21 @@ class TodayViewModel(
     fun retry() {
         actionError.value = null
         refreshVersion.value += 1
+    }
+
+    /** Reorders today's pending routines while retaining every other active routine slot. */
+    fun reorderPending(pendingIds: List<String>) {
+        if (todayProvider() != currentToday.value || pendingIds.toSet() != latestPendingIds.value) return
+        val fullOrder = reorderedActiveIds(latestRoutines.value, pendingIds) ?: return
+        viewModelScope.launch {
+            try {
+                repository.reorderRoutines(fullOrder)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Exception) {
+                actionError.value = "並び順を保存できませんでした。もう一度お試しください。"
+            }
+        }
     }
 
     private fun update(item: TodayRoutine, complete: Boolean) {
